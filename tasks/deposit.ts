@@ -2,17 +2,10 @@ import * as conf from "../config";
 import { task } from "hardhat/config";
 //string memory _symbol, uint256 _id, uint256 _amount, address _recipient, uint256 _nonce, uint8 v, bytes32 r, bytes32 s
 task("deposit", "Deposit token")
-    .addParam("symbol", "The token symbol")
-    .addParam("chainID", "The cahinID")    
-    .addParam("amount", "The amount token")    
-    .addParam("reipient", "The recipient address")            
-    .addParam("nonce", "The recipient address")                
-    .addParam("v", "The recipient address")                
-    .addParam("r", "The recipient address")                
-    .addParam("s", "The recipient address")                            
+    .addParam("amount", "Token amount")
     .setAction(async (taskArgs, { ethers }) => {
     let hardhatToken = await ethers.getContractAt(conf.CONTRACT_NAME, conf.CONTRACT_ADDR);
-    const result = await hardhatToken.createItem(taskArgs.symbol, taskArgs.chainID, taskArgs.amount, taskArgs.recipient, taskArgs.nonce, taskArgs.v, taskArgs.r, taskArgs.s);
+    const result = await hardhatToken.depost(taskArgs.amount);
     console.log(result);
   });
 

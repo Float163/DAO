@@ -1,3 +1,2 @@
-export const CONTRACT_NAME = "bridgeERC";
+export const CONTRACT_NAME = "DAO";
 export const CONTRACT_ADDR = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-export const VALIDATOR_ADDR = "0x5FbDB2315678afecb367f032d93F642f64180aa3";

@@ -14,11 +14,6 @@ contract DAO {
     mapping (address => uint256) private _balances;
     mapping (address => uint256) private _endVotes;    
 
-    struct Voter {
-        uint balance;
-        uint date;
-    }
-
     uint private numProposals = 0;
 
     mapping (uint => Proposal) proposals;

@@ -17,8 +17,6 @@ contract DAO {
         uint256 endVotes;
     }
 
-//    mapping (address => uint256) private _balances;
-//    mapping (address => uint256) private _endVotes;    
     mapping (address => Voters) private _voters;
 
     uint private numProposals = 0;
@@ -27,7 +25,7 @@ contract DAO {
 
     struct Proposal {
         address contr;
-        string func;
+        bytes func;
         string description;
         uint totalVotes;
         uint positiveVotes;
@@ -57,7 +55,7 @@ contract DAO {
     }
 
 
-    function addProposal (address _contr, string memory _func, string memory _desc) public returns (uint) {
+    function addProposal (address _contr, bytes memory _func, string memory _desc) public returns (uint) {
         require(chairMan == msg.sender, "Chairman only can create a proposal");
         uint proposalID = numProposals++; 
         Proposal storage p = proposals[proposalID];
@@ -83,13 +81,14 @@ contract DAO {
         }
     }
 
-    function finishProposal (uint256 _proposal, address _addr, uint _amount) public returns (bool) {
+    function finishProposal (uint256 _proposal) public returns (bool) {
         require(_proposal < numProposals, "Proposal not found"); 
         bool result = true;       
         require(block.timestamp > proposals[_proposal].endTime  , "Time has not expired");
         require(!proposals[_proposal].isFinished, "Proposal is already finished");        
         if ((proposals[_proposal].totalVotes > (m63(token).totalSupply() * quorum / 100)) && (proposals[_proposal].positiveVotes > (proposals[_proposal].totalVotes - proposals[_proposal].positiveVotes))) {
-            (result,) = proposals[_proposal].contr.call(abi.encodeWithSignature(proposals[_proposal].func, _addr, _amount));
+            (result, ) =proposals[_proposal].contr.call(proposals[_proposal].func);
+            require(result, "ERROR call func");
         } 
         proposals[_proposal].isFinished = true;
         return result;

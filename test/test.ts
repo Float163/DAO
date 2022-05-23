@@ -32,6 +32,7 @@ describe("Bridge ontract", function () {
   let addr1 : SignerWithAddress;  
   let addr2 : SignerWithAddress;
   let addr3 : SignerWithAddress;
+  let calldata: string;
 
   beforeEach(async function () {
     [owner, chair, addr1, addr2, addr3 ] = await ethers.getSigners();    
@@ -41,6 +42,34 @@ describe("Bridge ontract", function () {
     dao = await Mp.deploy(chair.address, 3, 20, token.address);    
     await token.mint(addr1.address, ethers.utils.parseEther('100'));
     await token.mint(addr2.address, ethers.utils.parseEther('100'));    
+
+    let jsonAbi =    [  {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "_to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "mint",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "success",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+     }
+     ];
+     const iface = new ethers.utils.Interface(jsonAbi);
+     calldata = iface.encodeFunctionData('mint',[addr1.address, ethers.utils.parseEther("50")]);
   });
 
   describe("Deployment", function () {
@@ -52,11 +81,11 @@ describe("Bridge ontract", function () {
   describe("Transactions", function () { 
     
     it("Should add proposal", async function () {
-        await dao.connect(chair).addProposal(token.address, "mint", "test proposal");
+        await dao.connect(chair).addProposal(token.address, calldata, "test proposal");
       });
 
     it("Should fail add proposal if not chair", async function () {
-        await expect(dao.addProposal(token.address, "mint", "test proposal")).revertedWith("Chairman only can create a proposal");
+        await expect(dao.addProposal(token.address, calldata, "test proposal")).revertedWith("Chairman only can create a proposal");
     });
 
     it("Should deposit token", async function () {
@@ -69,12 +98,12 @@ describe("Bridge ontract", function () {
     it("Should vote", async function () {
       await token.connect(addr1).approve(dao.address, ethers.utils.parseEther('100'));
       await dao.connect(addr1).deposit(ethers.utils.parseEther('40'));
-      await dao.connect(chair).addProposal(token.address, "mint", "test proposal");      
+      await dao.connect(chair).addProposal(token.address, calldata, "test proposal");      
       await dao.connect(addr1).vote(0, true);
     });
 
     it("Should fail vote if not deposit", async function () {
-      await dao.connect(chair).addProposal(token.address, "mint", "test proposal");      
+      await dao.connect(chair).addProposal(token.address, calldata, "test proposal");      
       await expect(dao.connect(addr1).vote(0, true)).to.be.revertedWith("Not enough token");
     });
 
@@ -87,7 +116,7 @@ describe("Bridge ontract", function () {
     it("Should fail vote if already voted", async function () {
       await token.connect(addr1).approve(dao.address, ethers.utils.parseEther('100'));
       await dao.connect(addr1).deposit(ethers.utils.parseEther('40'));
-      await dao.connect(chair).addProposal(token.address, "mint", "test proposal");      
+      await dao.connect(chair).addProposal(token.address, calldata, "test proposal");      
       await dao.connect(addr1).vote(0, true);
       await expect(dao.connect(addr1).vote(0, false)).to.be.revertedWith("Already voted");
     });
@@ -112,16 +141,16 @@ describe("Bridge ontract", function () {
     it("Should fail withdraw if active proposal", async function () {
       await token.connect(addr1).approve(dao.address, ethers.utils.parseEther('100'));
       await dao.connect(addr1).deposit(ethers.utils.parseEther('40'));
-      await dao.connect(chair).addProposal(token.address, "mint", "test proposal");      
+      await dao.connect(chair).addProposal(token.address, calldata, "test proposal");      
       await dao.connect(addr1).vote(0, true);
       await expect(dao.connect(addr1).withdraw()).to.be.revertedWith("Active proposal");            
     });
 
     it("Should finish proposal", async function () {
-      await dao.connect(chair).addProposal(token.address, "mint(address _to, uint256 _amount)", "test proposal");   
+      await dao.connect(chair).addProposal(token.address, calldata, "test proposal");   
       await ethers.provider.send('evm_increaseTime', [(3 * 60 * 60 * 24 + 10)]);
       await ethers.provider.send('evm_mine', []);
-      await dao.connect(addr1).finishProposal(0, addr1.address, ethers.utils.parseEther("50"));
+      await dao.connect(addr1).finishProposal(0);
       expect(await token.balanceOf(addr1.address)).to.equal(ethers.utils.parseEther("100"));            
     });
 
@@ -130,12 +159,12 @@ describe("Bridge ontract", function () {
       await dao.connect(addr1).deposit(ethers.utils.parseEther('100'));
       await token.connect(addr2).approve(dao.address, ethers.utils.parseEther('100'));
       await dao.connect(addr2).deposit(ethers.utils.parseEther('40'));
-      await dao.connect(chair).addProposal(token.address, "mint(address,uint256)", "test proposal");   
+      await dao.connect(chair).addProposal(token.address, calldata, "test proposal");   
       await dao.connect(addr1).vote(0, true);
       await dao.connect(addr2).vote(0, false); 
       await ethers.provider.send('evm_increaseTime', [(3 * 60 * 60 * 24 + 10)]);
       await ethers.provider.send('evm_mine', []);
-      await dao.connect(addr1).finishProposal(0, addr1.address, ethers.utils.parseEther("50"));
+      await dao.connect(addr1).finishProposal(0);
       expect(await token.balanceOf(addr1.address)).to.equal(ethers.utils.parseEther("50"));            
     });
 
@@ -144,12 +173,12 @@ describe("Bridge ontract", function () {
       await dao.connect(addr1).deposit(ethers.utils.parseEther('100'));
       await token.connect(addr2).approve(dao.address, ethers.utils.parseEther('100'));
       await dao.connect(addr2).deposit(ethers.utils.parseEther('40'));
-      await dao.connect(chair).addProposal(token.address, "mint(address,uint256)", "test proposal");   
+      await dao.connect(chair).addProposal(token.address, calldata, "test proposal");   
       await dao.connect(addr1).vote(0, false);
       await dao.connect(addr2).vote(0, true);            
       await ethers.provider.send('evm_increaseTime', [(3 * 60 * 60 * 24 + 10)]);
       await ethers.provider.send('evm_mine', []);
-      await dao.connect(addr1).finishProposal(0, addr1.address, ethers.utils.parseEther("50"));
+      await dao.connect(addr1).finishProposal(0);
       expect(await token.balanceOf(addr1.address)).to.equal(ethers.utils.parseEther("0"));            
     });
 
@@ -158,19 +187,19 @@ describe("Bridge ontract", function () {
       await dao.connect(addr1).deposit(ethers.utils.parseEther('5'));
       await token.connect(addr2).approve(dao.address, ethers.utils.parseEther('100'));
       await dao.connect(addr2).deposit(ethers.utils.parseEther('5'));
-      await dao.connect(chair).addProposal(token.address, "mint(address,uint256)", "test proposal");   
+      await dao.connect(chair).addProposal(token.address, calldata, "test proposal");   
       await dao.connect(addr1).vote(0, false);
       await dao.connect(addr2).vote(0, true);            
       await ethers.provider.send('evm_increaseTime', [(3 * 60 * 60 * 24 + 10)]);
       await ethers.provider.send('evm_mine', []);
-      await dao.connect(addr1).finishProposal(0, addr1.address, ethers.utils.parseEther("50"));
+      await dao.connect(addr1).finishProposal(0);
       expect(await token.balanceOf(addr1.address)).to.equal(ethers.utils.parseEther("95"));            
     });
 
     it("Should withdraw after finish proposal", async function () {
       await token.connect(addr1).approve(dao.address, ethers.utils.parseEther('100'));
       await dao.connect(addr1).deposit(ethers.utils.parseEther('40'));
-      await dao.connect(chair).addProposal(token.address, "mint", "test proposal");      
+      await dao.connect(chair).addProposal(token.address, calldata, "test proposal");      
       await dao.connect(addr1).vote(0, true);
       await ethers.provider.send('evm_increaseTime', [(3 * 60 * 60 * 24 + 10)]);
       await ethers.provider.send('evm_mine', []);
@@ -180,16 +209,16 @@ describe("Bridge ontract", function () {
     });
 
     it("Should fail finish proposal by time", async function () {
-      await dao.connect(chair).addProposal(token.address, "mint", "test proposal");  
-      await expect(dao.connect(addr1).finishProposal(0, addr1.address, ethers.utils.parseEther("50"))).to.be.revertedWith("Time has not expired");            
+      await dao.connect(chair).addProposal(token.address, calldata, "test proposal");  
+      await expect(dao.connect(addr1).finishProposal(0)).to.be.revertedWith("Time has not expired");            
     });
 
     it("Should fail finish proposal if already finished", async function () {
-      await dao.connect(chair).addProposal(token.address, "mint", "test proposal");   
+      await dao.connect(chair).addProposal(token.address, calldata, "test proposal");   
       await ethers.provider.send('evm_increaseTime', [(3 * 60 * 60 * 24 + 10)]);
       await ethers.provider.send('evm_mine', []);
-      await dao.connect(addr1).finishProposal(0, addr1.address, ethers.utils.parseEther("50"));
-      await expect(dao.connect(addr1).finishProposal(0, addr1.address, ethers.utils.parseEther("50"))).to.be.revertedWith("Proposal is already finished");            
+      await dao.connect(addr1).finishProposal(0);
+      await expect(dao.connect(addr1).finishProposal(0)).to.be.revertedWith("Proposal is already finished");            
     });
 
   });

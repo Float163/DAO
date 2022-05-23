@@ -11,8 +11,15 @@ contract DAO {
     address public token;
     uint public daysVote;
     uint public quorum;
-    mapping (address => uint256) private _balances;
-    mapping (address => uint256) private _endVotes;    
+
+    struct Voters {
+        uint256 balance;
+        uint256 endVotes;
+    }
+
+//    mapping (address => uint256) private _balances;
+//    mapping (address => uint256) private _endVotes;    
+    mapping (address => Voters) private _voters;
 
     uint private numProposals = 0;
 
@@ -39,14 +46,14 @@ contract DAO {
 
     function deposit (uint256 _amount) public {
         m63(token).transferFrom(msg.sender, address(this), _amount);
-        _balances[msg.sender] += _amount;
+        _voters[msg.sender].balance += _amount;
     }
 
     function withdraw() public {
-        require(_balances[msg.sender] > 0, "Not enough token");
-        require(block.timestamp > _endVotes[msg.sender], "Active proposal");       
-        m63(token).transfer(msg.sender, _balances[msg.sender]);                         
-        _balances[msg.sender] = 0;        
+        require(_voters[msg.sender].balance > 0, "Not enough token");
+        require(block.timestamp > _voters[msg.sender].endVotes, "Active proposal");       
+        m63(token).transfer(msg.sender, _voters[msg.sender].balance);                         
+        _voters[msg.sender].balance = 0;        
     }
 
 
@@ -62,17 +69,17 @@ contract DAO {
     }
 
     function vote (uint _proposal, bool _vote) public {
-        require(_balances[msg.sender] > 0, "Not enough token");        
+        require(_voters[msg.sender].balance > 0, "Not enough token");        
         require(_proposal < numProposals, "Proposal not found");
         require(!proposals[_proposal].isFinished, "Proposal is already finished");
         require(!proposals[_proposal].voters[msg.sender], "Already voted");
-        proposals[_proposal].totalVotes += _balances[msg.sender];
+        proposals[_proposal].totalVotes += _voters[msg.sender].balance;
         if (_vote) {
-            proposals[_proposal].positiveVotes += _balances[msg.sender];            
+            proposals[_proposal].positiveVotes += _voters[msg.sender].balance;            
         }
         proposals[_proposal].voters[msg.sender] = true;
-        if (_endVotes[msg.sender] < proposals[_proposal].endTime) {
-            _endVotes[msg.sender] = proposals[_proposal].endTime;
+        if (_voters[msg.sender].endVotes < proposals[_proposal].endTime) {
+            _voters[msg.sender].endVotes = proposals[_proposal].endTime;
         }
     }
 
